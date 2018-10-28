@@ -40,7 +40,9 @@
 #ifndef MGOS_MQTT_SUBSCRIBE_QOS
 #define MGOS_MQTT_SUBSCRIBE_QOS 1
 #endif
-
+uint32_t begin, end;
+double final;
+int counter;
 struct topic_handler {
   struct mg_str topic;
   mg_event_handler_t handler;
@@ -137,6 +139,7 @@ static void mgos_mqtt_ev(struct mg_connection *nc, int ev, void *ev_data,
   switch (ev) {
     case MG_EV_CONNECT: {
       int status = *((int *) ev_data);
+      asm volatile("rsr %0, ccount" : "=a" (begin)); // Starting the timer------------------
       LOG(LL_INFO,
           ("MQTT TCP connect %s (%d)", (status == 0 ? "ok" : "error"), status));
       if (status != 0) break;
@@ -177,8 +180,13 @@ static void mgos_mqtt_ev(struct mg_connection *nc, int ev, void *ev_data,
     case MG_EV_MQTT_CONNACK: {
       struct topic_handler *th;
       int code = ((struct mg_mqtt_message *) ev_data)->connack_ret_code;
-      LOG((code == 0 ? LL_INFO : LL_ERROR), ("MQTT CONNACK %d", code));
+      
+      //LOG((code == 0 ? LL_INFO : LL_ERROR), ("MQTT CONNACK %d", code));  //-------Commented this line ---
       if (code == 0) {
+        asm volatile("rsr %0, ccount" : "=a" (end)); //-------------------------------Ending the timer
+        final = end - begin; //----getting the difference----
+      double conversion = double / 160; //-----------------Calculating the time in Microsecond
+        LOG(LL_INFO, ("Connection Establishment time------------- %f", conversion)); // ----- Printing the connection establishment time
         struct mgos_cloud_arg arg = {.type = MGOS_CLOUD_MQTT};
         s_connected = true;
         s_reconnect_timeout_ms = 0;
